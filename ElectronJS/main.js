@@ -97,7 +97,11 @@ if (process.platform === "win32" && process.arch === "ia32") {
         __dirname,
         "chrome_mac64.app/Contents/MacOS/Google Chrome"
     );
-    execute_path = path.join(__dirname, "");
+    // Keep the macOS executor inside the signed application bundle.  An app
+    // opened through Gatekeeper's "Allow Anyway" flow can be App Translocated;
+    // sibling files next to the .app then resolve to a temporary private path.
+    // The packaged macOS build copies this binary into Resources/app.
+    execute_path = path.join(__dirname, "easyspider_executestage");
 } else if (process.platform === "linux") {
     driverPath = path.join(__dirname, "chrome_linux64/chromedriver_linux64");
     chromeBinaryPath = path.join(__dirname, "chrome_linux64/chrome");
@@ -1093,20 +1097,37 @@ async function beginInvoke(msg, ws) {
         // });
 
         let spawn = require("child_process").spawn;
-        if (
-            process.platform != "darwin" &&
-            msg.message.execute_type == 1 &&
-            msg.message.id != -1
-        ) {
-            let child_process = spawn(execute_path, parameters);
-            child_process.stdout.on("data", function (data) {
-                console.log(data.toString());
-            });
+        let execution_started = false;
+        if (msg.message.execute_type == 1 && msg.message.id != -1) {
+            if (process.platform === "darwin" && !fs.existsSync(execute_path)) {
+                console.error("macOS execution stage is missing from the app bundle:", execute_path);
+            } else {
+                const child_process = spawn(execute_path, parameters, {
+                    // All mutable task state belongs in Electron's stable
+                    // userData directory, never in a translocated app path.
+                    cwd: task_server.getDir(),
+                    env: {
+                        ...process.env,
+                        PYTHONUNBUFFERED: "1",
+                        PYTHONUTF8: "1",
+                        EASYSPIDER_DATA_DIR: task_server.getDir(),
+                        EASYSPIDER_APP_RESOURCES: __dirname,
+                    },
+                });
+                execution_started = true;
+                child_process.on("error", (error) => {
+                    console.error("Failed to start execution stage:", error);
+                });
+                child_process.stdout.on("data", function (data) {
+                    console.log(data.toString());
+                });
+            }
         }
         ws.send(
             JSON.stringify({
                 config_folder: task_server.getDir() + "/",
                 easyspider_location: task_server.getEasySpiderLocation(),
+                execution_started,
             })
         );
     } else if (msg.type == 6) {

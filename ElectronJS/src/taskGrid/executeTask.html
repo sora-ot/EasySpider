@@ -348,6 +348,7 @@
             config_folder: "",
             easyspider_location: "",
             mysql_config_path: "",
+            executionStarted: false,
             OS: "Windows",
         }, mounted() {
             $.get(this.backEndAddressServiceWrapper + "/getConfig", function (result) {
@@ -558,13 +559,22 @@
                         }
                     };
                     app.$data.ID = result;
+                    app.$data.executionStarted = false;
                     ws.send(JSON.stringify(message));
                     // 使用函数并打印结果
                     const systemInfo = detectOperatingSystemAndArch();
                     // $.get(app.$data.backEndAddressServiceWrapper + "/queryOSVersion", function (OSInfo) {
                     if (systemInfo.OS == 'MacOS') {
                         changeCommand();
-                        $('#myModal').modal('show');
+                        // The packaged macOS executor is now launched inside the
+                        // signed app bundle.  Wait briefly for the websocket
+                        // acknowledgement before falling back to the manual
+                        // command dialog used by older packages.
+                        setTimeout(function () {
+                            if (!app.$data.executionStarted) {
+                                $('#myModal').modal('show');
+                            }
+                        }, 250);
                     }
                     // });
                 });
@@ -626,8 +636,13 @@
     };
     ws.onmessage = function (message) {
         message = JSON.parse(message.data);
-        app.$data.config_folder = message.config_folder.replaceAll("\\", "/");
-        app.$data.easyspider_location = message.easyspider_location.replace("/EasySpider.app/", "");
+        if (message.config_folder) {
+            app.$data.config_folder = message.config_folder.replaceAll("\\", "/");
+        }
+        if (message.easyspider_location) {
+            app.$data.easyspider_location = message.easyspider_location.replace("/EasySpider.app/", "");
+        }
+        app.$data.executionStarted = message.execution_started === true;
     }
     ws.onclose = function () {
         // 关闭 websocket
