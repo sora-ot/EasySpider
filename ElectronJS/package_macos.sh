@@ -50,6 +50,7 @@ rm -rf "$STAGE_DIR/Code" "$STAGE_DIR/Sample Tasks" "$STAGE_DIR/Data" \
 rm -f "$STAGE_DIR/config.json" "$STAGE_DIR/mysql_config.json"
 mkdir -p "$STAGE_DIR/Code" "$STAGE_DIR/Sample Tasks" "$STAGE_DIR/Data" \
     "$STAGE_DIR/execution_instances"
+cp "$SCRIPT_DIR/execute_macos.sh" "$STAGE_DIR/execute_macos.sh"
 cp "$REPO_ROOT/ExecuteStage"/*.py "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/requirements.txt" "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/Readme.md" "$STAGE_DIR/Code/"
