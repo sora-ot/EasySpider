@@ -48,6 +48,15 @@ class Runtime:
                 self.temporary = tempfile.TemporaryDirectory(prefix="easyspider-pw-")
                 profile = self.temporary.name
             profile = str(Path(profile).resolve())
+            from playwright_antidetect import context_settings
+            settings = context_settings(options)
+            # These are the same switches used by the Electron designer.  Keep
+            # them in the shared Python runtime so AI-RPA does not silently
+            # fall back to a detectable Playwright launch.
+            if not any(arg.startswith("--disable-blink-features=") for arg in args):
+                args.append("--disable-blink-features=AutomationControlled")
+            if not any(arg.startswith("--lang=") for arg in args):
+                args.append("--lang=" + settings["locale"])
             prefs = options.experimental_options.get("prefs", {})
             self.downloads = Path(prefs.get("download.default_directory") or Path(profile) / "Downloads").resolve()
             self.downloads.mkdir(parents=True, exist_ok=True)
@@ -62,10 +71,22 @@ class Runtime:
                     target = target.setdefault(part, {})
                 target[parts[-1]] = value
             pref_file.write_text(json.dumps(existing), encoding="utf-8")
-            config = dict(headless=any(a.startswith("--headless") for a in options.arguments),
-                          args=args, accept_downloads=True, no_viewport=True,
-                          ignore_default_args=["--enable-automation"] if "enable-automation" in
-                          options.experimental_options.get("excludeSwitches", []) else [])
+            config = dict(
+                headless=any(a.startswith("--headless") for a in options.arguments),
+                args=args,
+                accept_downloads=True,
+                no_viewport=True,
+                locale=settings["locale"],
+                timezone_id=settings["timezone_id"],
+                # Playwright adds these switches for its own control channel.
+                # Leaving them in place makes popup and history probes report a
+                # non-native browser.  Removing them restores Chrome defaults.
+                ignore_default_args=[
+                    "--enable-automation",
+                    "--disable-popup-blocking",
+                    "--disable-ipc-flooding-protection",
+                ],
+            )
             if options.binary_location:
                 config["executable_path"] = str(Path(options.binary_location).resolve())
             else:
@@ -78,6 +99,12 @@ class Runtime:
                 config["no_viewport"] = False
             self.context = await self.pw.chromium.launch_persistent_context(profile, **config)
             self.browser = self.context.browser
+            await self.context.add_init_script(script=settings["init_script"])
+        if endpoint:
+            # The attached Electron browser already installs the shared script
+            # before exposing its Native Bridge.  Do not install it a second
+            # time into an existing context.
+            pass
         self.context.on("page", self.register_page)
         for page in self.context.pages:
             self.register_page(page)

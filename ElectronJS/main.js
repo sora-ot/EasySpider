@@ -11,6 +11,7 @@ app.commandLine.appendSwitch("--disable-http-cache");
 const {launchBrowser, By, Key, until, Select} = require("./playwright_browser");
 const {rootCertificates} = require("tls");
 const {exit} = require("process");
+const os = require("os");
 const path = require("path");
 const fs = require("fs");
 const {exec, spawn, execFile} = require("child_process");
@@ -26,6 +27,21 @@ config = JSON.parse(config);
 let config_context = JSON.parse(
     fs.readFileSync(path.join(task_server.getDir(), `config.json`), "utf8")
 ); //仅在当前进程中使用，不会写入文件
+
+function buildStealthInitScript(locale) {
+    const languages = locale.toLowerCase().startsWith("zh")
+        ? ["zh-CN", "zh"]
+        : [locale, locale.split("-", 1)[0]];
+    const configuredCpu = Number.parseInt(process.env.EASYSPIDER_HARDWARE_CONCURRENCY || "", 10);
+    const cpu = Number.isFinite(configuredCpu) && configuredCpu > 0
+        ? Math.min(configuredCpu, 256)
+        : Math.min(Math.max(os.cpus().length || 4, 1), 256);
+    let source = fs.readFileSync(path.join(__dirname, "stealth.min.js"), "utf8");
+    source = source.replace("opts:{languages:[]}", `opts:{languages:${JSON.stringify(languages)}}`);
+    source = source.replace("opts:{hardwareConcurrency:4}", `opts:{hardwareConcurrency:${cpu}}`);
+    return source +
+        "\ntry { if (navigator.webdriver !== undefined) Object.defineProperty(Object.getPrototypeOf(navigator), 'webdriver', {get: () => undefined}); } catch (_) {}";
+}
 
 const macOSCommandFolderConfigPath = path.join(
     task_server.getDir(),
@@ -1548,11 +1564,11 @@ async function runBrowser(lang = "en", user_data_folder = "", mobile = false) {
     } else {
         config_context.user_data_folder = "";
     }
-    const scriptPath = path.join(__dirname, "stealth.min.js");
-    const initScript = fs.readFileSync(scriptPath, "utf8") +
-        "\nObject.defineProperty(navigator, 'webdriver', {get: () => undefined});";
+    const locale = lang == "zh" ? "zh-CN" : "en-US";
+    const initScript = buildStealthInitScript(locale);
     driver = await launchBrowser({
-        executablePath: chromeBinaryPath, profile: dir, mobile, userAgent,
+        executablePath: chromeBinaryPath, profile: dir, mobile, userAgent, locale,
+        timezoneId: process.env.EASYSPIDER_TIMEZONE || "Asia/Shanghai",
         extensions: profileExtensions, initScript, headless: false,
     });
     await driver.manage().setTimeouts({implicit: 3000, pageLoad: 10000, script: 10000});

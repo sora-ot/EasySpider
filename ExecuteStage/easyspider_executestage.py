@@ -194,9 +194,13 @@ class BrowserThread(Thread):
             self.print_and_log("stealth.min.js was not found; continuing with Playwright init script defaults")
         self.browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-                })
+                try {
+                    if (navigator.webdriver !== undefined) {
+                        Object.defineProperty(Object.getPrototypeOf(navigator), 'webdriver', {
+                            get: () => undefined
+                        })
+                    }
+                } catch (_) {}
         """
         })
         WebDriverWait(self.browser, 10)

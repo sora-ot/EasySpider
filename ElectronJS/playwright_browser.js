@@ -126,6 +126,12 @@ class Browser {
             timer=setTimeout(()=>reject(failure('TimeoutError','Script timed out')),this.timeouts.script);
         })])); } finally { clearTimeout(timer); }
     }
+    async executeAsyncScript(code,...args) {
+        const promise=this.frame.evaluate(({code,args})=>new Promise((resolve,reject)=>{
+            try {(new Function(code)).apply(window,[...args,resolve]);} catch(error) {reject(error);}
+        }),{code,args:unwrap(args)});
+        return await this.action(promise);
+    }
     async getAllWindowHandles() { return [...this.pages].filter(([,p])=>!p.isClosed()).map(([id])=>id); }
     async getCurrentUrl() { return this.page.url(); }
     async getTitle() { return this.page.title(); }
@@ -199,7 +205,7 @@ class Browser {
         }
     }
 }
-async function launchBrowser({executablePath, profile, mobile=false, extensions=[], initScript='', headless=false, userAgent=''}) {
+async function launchBrowser({executablePath, profile, mobile=false, extensions=[], initScript='', headless=false, userAgent='', locale='zh-CN', timezoneId='Asia/Shanghai'}) {
     const temporary=!profile;
     profile=profile?path.resolve(profile):fs.mkdtempSync(path.join(os.tmpdir(),'easyspider-designer-'));
     let context;
@@ -207,8 +213,10 @@ async function launchBrowser({executablePath, profile, mobile=false, extensions=
         context=await chromium.launchPersistentContext(profile,{
             executablePath, headless, noViewport:!mobile, ...(mobile?devices['iPhone XR']:{}),
             ...(userAgent?{userAgent}:{}),
-            ignoreDefaultArgs:['--enable-automation', '--disable-extensions'],
-            args:['--disable-blink-features=AutomationControlled','--enable-unsafe-extension-debugging',
+            locale, timezoneId,
+            ignoreDefaultArgs:['--enable-automation', '--disable-extensions',
+                '--disable-popup-blocking', '--disable-ipc-flooding-protection'],
+            args:['--disable-blink-features=AutomationControlled',`--lang=${locale}`,'--enable-unsafe-extension-debugging',
                 '--remote-debugging-port=0','--remote-debugging-address=127.0.0.1'],
         });
         if(initScript)await context.addInitScript({content:initScript});
