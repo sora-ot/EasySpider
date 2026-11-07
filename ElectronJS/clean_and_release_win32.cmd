@@ -18,7 +18,6 @@ copy ..\ExecuteStage\*.py ..\.temp_to_pub\EasySpider_windows_x32\Code
 copy ..\ExecuteStage\requirements.txt ..\.temp_to_pub\EasySpider_windows_x32\Code
 copy ..\ExecuteStage\Readme.md ..\.temp_to_pub\EasySpider_windows_x32\Code
 copy ..\ExecuteStage\myCode.py ..\.temp_to_pub\EasySpider_windows_x32
-xcopy ..\ExecuteStage\undetected_chromedriver_ES ..\.temp_to_pub\EasySpider_windows_x32\Code\undetected_chromedriver_ES /E /I /Y
 xcopy ..\ExecuteStage\.vscode ..\.temp_to_pub\EasySpider_windows_x32\Code\.vscode /E /I /Y
 rmdir /s /q ..\.temp_to_pub\EasySpider_windows_x32\user_data
 rmdir /s /q ..\.temp_to_pub\EasySpider_windows_x32\execution_instances

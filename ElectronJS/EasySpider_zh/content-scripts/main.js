@@ -18391,11 +18391,11 @@ document.addEventListener("mousemove", function() {
             }
         }
 
-        try {
-            global$1.xnode = global$1.oe.style.backgroundColor;
-        } catch {
-            global$1.xnode = "";
-        }
+        // try {
+        //     global.xnode = global.oe.style.backgroundColor;
+        // } catch {
+        //     global.xnode = "";
+        // }
 
         if (exist == 1) ; else {
             try {

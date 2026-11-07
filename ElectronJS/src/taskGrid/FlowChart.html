@@ -172,7 +172,7 @@
                     <input spellcheck=false onkeydown="inputDelete(event)" class="form-control" v-model.number="nowNode['parameters']['maxWaitTime']" type="number" required></input>
                     <label>Click Type (including double-click):</label>
                     <select v-model='nowNode["parameters"]["clickWay"]' class="form-control">
-                        <option :value = 0>Selenium</option>
+                        <option :value = 0>Playwright</option>
                         <option :value = 1>JavaScript</option>
                         <option :value = 2>Double-click</option>
                     </select>
@@ -412,7 +412,7 @@
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='nowNode["parameters"]["codeMode"] == 5'>Please read the instructions first and then write the specific code in the input box above (not in this box). To execute a large amount of code, you can simply write "outside:myCode.py" and the program will read and execute the code within myCode.py under the EasySpider directory.
                          Be aware that statements containing exec and eval operations and XPath cannot be tested on the current page, and can only be run when they are actually called upon in a task.
 This option is an advanced feature that allows direct manipulation of the running browser using Python code. You can also customize variables in the entire execution environment and perform operations such as modifying and assigning values. Here are some examples:
-1. Use `self.browser` to refer to the current browser being operated. You can directly use Selenium's API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)` to scroll to the bottom.
+1. Use `self.browser` to refer to the current browser being operated. You can directly use EasySpider's browser API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)` to scroll to the bottom.
 2. Define a global variable: `self.myVar = 1`
 3. Manipulate the above-defined global variable: `self.myVar = self.myVar + 1`
 4. Print the above-defined global variable: `print(self.myVar)`
@@ -430,7 +430,7 @@ print(emotlib.emoji()) # Use one of its functions.
 </pre>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='nowNode["parameters"]["codeMode"] == 6'>Please read the instructions first and then write the specific code in the input box above (not in this box). To execute a large amount of code, you can simply write "outside:myCode.py" and the program will read and execute the code within myCode.py under the EasySpider directory.
 This option is an advanced feature that allows directly returning the expression value of Python code, and in other places, use Field["FieldName"] to represent the return value of this operation.. Here are some examples:
-1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use Selenium's API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text` to return the text on the current page.
+1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use EasySpider's browser API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text` to return the text on the current page.
 2. Return the value of a custom global variable: `self.myVar`
 3. Return the result of a conditional statement: `self.myVar == 1`
 4. Determining whether the value extracted from a certain field is equal to the value of a certain variable: self.outputParameters["field name"] == self.myVar
@@ -578,7 +578,7 @@ Please note that this feature does not support assigning values to variables. In
                         <textarea spellcheck=false onkeydown="inputDelete(event)" class="form-control" rows="3" v-model='nowNode["parameters"]["code"]' placeholder="Continue the loop if the command return value is greater than 0 or evaluates to true; otherwise, stop the loop. For example, return document.body.scrollWidth > 1000 is an example of a JavaScript command return value, and python D:/test.py is an example of a system command return value."></textarea>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 220px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='parseInt(loopType) == 7'>Please read the instructions first and then write the specific code in the input box above (not in this box). To execute a large amount of code, you can simply write "outside:myCode.py" and the program will read and execute the code within myCode.py under the EasySpider directory.
 Loop based on the expression value of Python code. Here are some examples:
-1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use Selenium's API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"`, which checks whether the current page contains the text "123".
+1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use EasySpider's browser API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"`, which checks whether the current page contains the text "123".
 2. Return the value of a custom global variable: `self.myVar`
 3. Return the result of a conditional statement: `self.myVar > 1`
 4. Determining whether the value extracted from a certain field is equal to the value of a certain variable: self.outputParameters["field name"] == self.myVar
@@ -662,7 +662,7 @@ If the expression returns a value greater than 0 or evaluates to True, the loop 
                         <textarea spellcheck=false onkeydown="inputDelete(event)" class="form-control" rows="3" v-model='nowNode["parameters"]["code"]' placeholder="If the return value is greater than 0 or true, the operations within this branch will be executed; otherwise, they will not be executed. For example: return document.body.scrollWidth > 1000 or python D:/test.py, representing examples of JS command and system command return values."></textarea>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word!important; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='TClass == 8'>Please read the instructions first and then write the specific code in the input box above (not in this box). To execute a large amount of code, you can simply write "outside:myCode.py" and the program will read and execute the code within myCode.py under the EasySpider directory.
 Use the expression value of Python code to determine whether a condition is satisfied. Here are some examples:
-1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use Selenium's API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"`, which checks whether the current page contains the text "123".
+1. Return relevant values of the current browser object. Use `self.browser` to refer to the current browser being operated. You can directly use EasySpider's browser API to perform operations, such as `self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"`, which checks whether the current page contains the text "123".
 2. Return the value of a custom global variable: `self.myVar`
 3. Return the result of a conditional statement: `self.myVar == 1`
 4. Determining whether the value extracted from a certain field is equal to the value of a certain variable: self.outputParameters["field name"] == self.myVar

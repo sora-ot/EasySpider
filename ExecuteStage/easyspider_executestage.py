@@ -6,7 +6,6 @@ import platform
 import shutil
 import string
 import threading
-# import undetected_chromedriver as uc
 from utils import detect_optimizable, download_image, extract_text_from_html, get_output_code, isnotnull, lowercase_tags_in_xpath, myMySQL, new_line, \
     on_press_creator, on_release_creator, readCode, rename_downloaded_file, replace_field_values, safe_print, send_email, split_text_by_lines, write_to_csv, write_to_excel, write_to_json
 from constants import WriteMode, DataWriteMode, GraphOption
@@ -18,20 +17,20 @@ import os
 import csv
 from openpyxl import load_workbook, Workbook
 import random
-from selenium.webdriver import ActionChains
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.common.exceptions import StaleElementReferenceException, InvalidSelectorException
-from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium import webdriver
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from playwright_driver import ActionChains
+from playwright_driver import Select
+from playwright_driver import DesiredCapabilities
+from playwright_driver import StaleElementReferenceException, InvalidSelectorException
+from playwright_driver import TimeoutException
+from playwright_driver import NoSuchElementException
+from playwright_driver import By
+from playwright_driver import EC
+from playwright_driver import WebDriverWait
+from playwright_driver import webdriver
+from playwright_driver import ActionChains
+from playwright_driver import Keys
+from playwright_driver import Options
+from playwright_driver import Service
 from datetime import datetime
 import io  # 遇到错误退出时应执行的代码
 import json
@@ -68,8 +67,6 @@ except:
 # import numpy
 # import pytesseract
 # import uuid
-if sys.platform != "darwin":
-    from myChrome import MyUCChrome
 desired_capabilities = DesiredCapabilities.CHROME
 desired_capabilities["pageLoadStrategy"] = "none"
 
@@ -95,6 +92,27 @@ def _data_directory():
     if sys.platform == "darwin" and getattr(sys, "frozen", False):
         return Path(os.path.expanduser("~/Library/Application Support/EasySpider")).resolve()
     return Path.cwd().resolve()
+
+
+def _find_stealth_script(browser):
+    """Find the bundled init script without relying on ChromeDriver paths."""
+    binary = getattr(getattr(browser, "options", None), "binary_location", "")
+    candidates = []
+    if binary:
+        candidates.append(Path(binary).expanduser().resolve().parent / "stealth.min.js")
+    candidates.extend([
+        RUNTIME_DIRECTORY / "stealth.min.js",
+        RUNTIME_DIRECTORY.parent / "ElectronJS" / "stealth.min.js",
+        RUNTIME_DIRECTORY.parent / "stealth.min.js",
+        Path.cwd() / "stealth.min.js",
+    ])
+    seen = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate not in seen and candidate.is_file():
+            return candidate
+        seen.add(candidate)
+    return None
 
 
 RUNTIME_DIRECTORY = _runtime_directory()
@@ -166,11 +184,14 @@ class BrowserThread(Thread):
                                "将从头开始执行，如果需要从上次退出的步骤开始执行，请在保存任务时设置是否从上次保存位置开始执行为“是”。")
             self.print_and_log("In this mode, task ID", self.id,
                                "will start from the beginning, if you want to start from the last step, please set the option 'start from the last step' to 'yes' when saving the task.")
-        stealth_path = os.path.join(os.path.dirname(driver_path), "stealth.min.js")
-        with open(stealth_path, 'r') as f:
-            js = f.read()
-            self.print_and_log("Loading stealth.min.js")
-        self.browser.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {'source': js})  # TMALL 反扒
+        stealth_path = _find_stealth_script(self.browser)
+        if stealth_path:
+            self.browser.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': stealth_path.read_text(encoding='utf-8')
+            })
+            self.print_and_log("Loading stealth.min.js from", str(stealth_path))
+        else:
+            self.print_and_log("stealth.min.js was not found; continuing with Playwright init script defaults")
         self.browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
                 Object.defineProperty(navigator, 'webdriver', {
@@ -179,10 +200,9 @@ class BrowserThread(Thread):
         """
         })
         WebDriverWait(self.browser, 10)
-        self.browser.command_executor._commands["send_command"] = ("POST", '/session/$sessionId/chromium/send_command')
         path = os.path.join(os.path.abspath("./"), "Data", "Task_" + str(self.id), self.saveName, "files")
         self.paramss = {'cmd': 'Page.setDownloadBehavior', 'params': {'behavior': 'allow', 'downloadPath': path}}
-        self.browser.execute("send_command", self.paramss)  # 下载目录改变
+        self.browser.execute_cdp_cmd(self.paramss["cmd"], self.paramss["params"])  # 下载目录改变
         self.monitor_event = threading.Event()
         self.monitor_thread = threading.Thread(target=rename_downloaded_file, args=(path, self.monitor_event)) #path后面的逗号不能省略，是元组固定写法
         self.monitor_thread.start()
@@ -1743,7 +1763,7 @@ class BrowserThread(Thread):
                 # except Exception as e:
                 script = "document.elementFromPoint(" + str(x) + "," + str(y) + ").click();"
                 self.browser.execute_script(script)
-            elif click_way == 0:  # 用selenium的点击方法
+            elif click_way == 0:  # 用Playwright的点击方法
                 try:
                     actions = ActionChains(self.browser)  # 实例化一个action对象
                     if newTab == 1:  # 在新标签页打开
@@ -1760,8 +1780,8 @@ class BrowserThread(Thread):
                         actions = ActionChains(self.browser)  # 实例化一个action对象
                         actions.click(element).perform()
                     except Exception as e:
-                        self.print_and_log(f"Selenium点击元素{path}失败，将尝试使用JavaScript点击")
-                        self.print_and_log(f"Failed to click element {path} with Selenium, will try to click with JavaScript")
+                        self.print_and_log(f"Playwright点击元素{path}失败，将尝试使用JavaScript点击")
+                        self.print_and_log(f"Failed to click element {path} with Playwright, will try to click with JavaScript")
                         script = 'var result = document.evaluate(`' + path + \
                             '`, document, null, XPathResult.ANY_TYPE, null);for(let i=0;i<arguments[0];i++){result.iterateNext();} result.iterateNext().click();'
                         self.browser.execute_script(script, str(index))  # 用js的点击方法
@@ -1779,8 +1799,8 @@ class BrowserThread(Thread):
                         actions = ActionChains(self.browser)  # 实例化一个action对象
                         actions.double_click(element).perform()
                     except Exception as e:
-                        self.print_and_log(f"Selenium双击元素{path}失败，将尝试使用JavaScript双击")
-                        self.print_and_log(f"Failed to double click element {path} with Selenium, will try to double click with JavaScript")
+                        self.print_and_log(f"Playwright双击元素{path}失败，将尝试使用JavaScript双击")
+                        self.print_and_log(f"Failed to double click element {path} with Playwright, will try to double click with JavaScript")
                         script = 'var result = document.evaluate(`' + path + \
                             '`, document, null, XPathResult.ANY_TYPE, null);for(let i=0;i<arguments[0];i++){result.iterateNext();} result.iterateNext().click();'
                         self.browser.execute_script(script, str(index))  # 用js的点击方法
@@ -2176,7 +2196,7 @@ class BrowserThread(Thread):
                     self.outputParameters[p["name"]] = content
                 except:
                     self.outputParameters[p["name"]] = p["default"]
-        # 对于不能优化的操作，使用selenium执行
+        # 对于不能优化的操作，使用Playwright执行
         for p in param["params"]:
             if not p["optimizable"]:
                 content = ""
@@ -2353,101 +2373,59 @@ if __name__ == '__main__':
     print(c)
     c.remote_control_key = remote_key  # 恢复远程控制密钥
     options = webdriver.ChromeOptions()
-    driver_path = "chromedriver.exe"
+    print("Browser backend: Playwright")
     print(sys.platform, platform.architecture())
     if not os.path.exists(os.getcwd() + "/Data"):
         os.mkdir(os.getcwd() + "/Data")
-    if sys.platform == "darwin" and platform.architecture()[0] == "64bit":
-        resource_override = os.environ.get("EASYSPIDER_APP_RESOURCES", "").strip()
-        resource_candidates = []
-        if resource_override:
-            resource_candidates.append(Path(resource_override).expanduser().resolve())
-        # Bundled executor: RUNTIME_DIRECTORY is Resources/app.
-        resource_candidates.append(RUNTIME_DIRECTORY)
-        # Portable release fallback: executor is next to EasySpider.app.
-        resource_candidates.append(RUNTIME_DIRECTORY / "EasySpider.app" / "Contents" / "Resources" / "app")
-        # Development fallback when running the Python entry point directly.
-        resource_candidates.append(RUNTIME_DIRECTORY.parent / "ElectronJS")
-        resource_root = next(
-            (candidate for candidate in resource_candidates
-             if (candidate / "chromedriver_mac64").exists() and
-             (candidate / "chrome_mac64.app").exists()),
-            None,
-        )
-        if resource_root is None:
-            raise FileNotFoundError(
-                "Cannot locate the bundled macOS Chrome resources. "
-                "Checked: " + ", ".join(str(candidate) for candidate in resource_candidates)
-            )
-        options.binary_location = str(
-            resource_root / "chrome_mac64.app" / "Contents" / "MacOS" / "Google Chrome"
-        )
-        driver_path = str(resource_root / "chromedriver_mac64")
-        print(driver_path)
-        if c.config_folder == "":
-            c.config_folder = os.path.expanduser(
-                "~/Library/Application Support/EasySpider/")
-    # 在 linux 里，EasySpider 打包版默认是在 EasySpider 文件夹内执行的，没有 windows 上那种外层的 25kb 启动器
-    # 因此需要特殊处理并判断此时 chrome, chromedriver 和扩展的路径。
-    elif sys.platform == "linux" and platform.architecture()[0] == "64bit" and os.path.exists(os.path.join(os.getcwd(), "resources")):
-        print("Finding chromedriver in EasySpider",
-              os.getcwd())
-        # 相对于下一条检查语句，这里去掉了 EasySpider 文件夹这一层
-        options.binary_location = "resources/app/chrome_linux64/chrome"
-        driver_path = "resources/app/chrome_linux64/chromedriver_linux64"
-    elif os.path.exists(os.getcwd() + "/EasySpider/resources"):  # 打包后的路径
-        print("Finding chromedriver in EasySpider",
-              os.getcwd() + "/EasySpider")
-        if sys.platform == "win32" and platform.architecture()[0] == "32bit":
-            options.binary_location = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win32/chrome.exe")  # 指定chrome位置
-            driver_path = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win32/chromedriver_win32.exe")
-        elif sys.platform == "win32" and platform.architecture()[0] == "64bit":
-            options.binary_location = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win64/chrome.exe")
-            driver_path = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win64/chromedriver_win64.exe")
-        elif sys.platform == "linux" and platform.architecture()[0] == "64bit":
-            options.binary_location = "EasySpider/resources/app/chrome_linux64/chrome"
-            driver_path = "EasySpider/resources/app/chrome_linux64/chromedriver_linux64"
-        else:
-            print("Unsupported platform")
-            sys.exit()
-        print("Chrome location:", options.binary_location)
-        print("Chromedriver location:", driver_path)
-    elif os.path.exists(os.getcwd() + "/../ElectronJS"):
-        # 软件dev用
-        print("Finding chromedriver in EasySpider",
-              os.getcwd() + "/ElectronJS")
-        if sys.platform == "win32" and platform.architecture()[0] == "32bit":
-            options.binary_location = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win32/chrome.exe")  # 指定chrome位置
-            driver_path = os.path.join(
-                os.getcwd(), "EasySpider/resources/app/chrome_win32/chromedriver_win32.exe")
-        elif sys.platform == "win32" and platform.architecture()[0] == "64bit":
-            options.binary_location = "../ElectronJS/chrome_win64/chrome.exe"  # 指定chrome位置
-            driver_path = "../ElectronJS/chrome_win64/chromedriver_win64.exe"
-        elif sys.platform == "linux" and platform.architecture()[0] == "64bit":
-            options.binary_location = "../ElectronJS/chrome_linux64/chrome"
-            driver_path = "../ElectronJS/chrome_linux64/chromedriver_linux64"
-        else:
-            print("Unsupported platform for automatic detection. You need to specify chrome executable path, chromedriver path in code.")
-            sys.exit()
+
+    # Resolve the bundled Chrome binary directly. Playwright launches Chrome and
+    # does not need a version-matched ChromeDriver executable.
+    chrome_override = os.environ.get("EASYSPIDER_CHROME_BINARY", "").strip()
+    binary_name = "chrome.exe" if sys.platform == "win32" else "chrome"
+    if sys.platform == "darwin":
+        binary_name = "Google Chrome"
+    architecture = "win32" if platform.architecture()[0] == "32bit" else "win64"
+    if sys.platform == "linux":
+        architecture = "chrome_linux64"
+    elif sys.platform == "darwin":
+        architecture = "chrome_mac64.app"
     else:
-        options.binary_location = "./chrome.exe"  # 指定chrome位置
-        driver_path = "./chromedriver.exe"
+        architecture = "chrome_" + architecture
 
-    options.add_experimental_option(
-        'excludeSwitches', ['enable-automation'])  # 以开发者模式
+    candidates = []
+    if chrome_override:
+        if not Path(chrome_override).expanduser().is_file():
+            raise FileNotFoundError(f"EASYSPIDER_CHROME_BINARY does not exist: {chrome_override}")
+        candidates.append(Path(chrome_override).expanduser())
+    if sys.platform == "darwin":
+        candidates.extend([
+            RUNTIME_DIRECTORY / "chrome_mac64.app" / "Contents" / "MacOS" / binary_name,
+            RUNTIME_DIRECTORY / "EasySpider.app" / "Contents" / "Resources" / "app" / architecture / "Contents" / "MacOS" / binary_name,
+            RUNTIME_DIRECTORY.parent / architecture / "Contents" / "MacOS" / binary_name,
+            RUNTIME_DIRECTORY.parent / "ElectronJS" / architecture / "Contents" / "MacOS" / binary_name,
+        ])
+    else:
+        candidates.extend([
+            RUNTIME_DIRECTORY / binary_name,
+            RUNTIME_DIRECTORY / architecture / binary_name,
+            RUNTIME_DIRECTORY / "resources" / "app" / architecture / binary_name,
+            RUNTIME_DIRECTORY.parent / "ElectronJS" / architecture / binary_name,
+            RUNTIME_DIRECTORY.parent / architecture / binary_name,
+            Path.cwd() / "EasySpider" / "resources" / "app" / architecture / binary_name,
+            Path.cwd().parent / "ElectronJS" / architecture / binary_name,
+            Path.cwd() / architecture / binary_name,
+        ])
+    bundled_chrome = next((candidate.resolve() for candidate in candidates if candidate.is_file()), None)
+    if chrome_override and bundled_chrome is None:
+        raise FileNotFoundError(f"EASYSPIDER_CHROME_BINARY does not exist: {chrome_override}")
+    if bundled_chrome is not None:
+        options.binary_location = str(bundled_chrome)
+    elif sys.platform == "win32":
+        raise FileNotFoundError("Could not locate bundled Chrome. Set EASYSPIDER_CHROME_BINARY to chrome.exe.")
+    print("Chrome location:", options.binary_location or "system Chrome")
 
-
-    # 总结：
-    # 0. 带Cookie需要用userdatadir
-    # 1. chrome_options才是配置用户文件和chrome文件地址的正确选项
-    # 2. User Profile文件夹的路径是：C:\Users\用户名\AppData\Local\Google\Chrome\User Data不要加Default
-    # 3. 就算User Profile相同，chrome版本不同所存储的cookie信息也不同，也不能爬
-    # 4. TMALL如果一直弹出验证码，而且无法通过验证，那么需要在其他浏览器上用
+    config = {}
+    absolute_user_data_folder = ""
     try:
         with open(c.config_folder + c.config_file_name, "r", encoding='utf-8') as f:
             config = json.load(f)
@@ -2462,8 +2440,7 @@ if __name__ == '__main__':
     # 阻止http -> https的重定向
     options.add_argument("--disable-features=CrossSiteDocumentBlockingIfIsolating,CrossSiteDocumentBlockingAlways,IsolateOrigins,site-per-process")
     options.add_argument("--disable-web-security")  # 禁用同源策略
-    options.add_argument('-ignore-certificate-errors')
-    options.add_argument('-ignore -ssl-errors')
+    options.add_argument('--ignore-certificate-errors')
 
     # Many headless/server Linux hosts do not expose a usable Vulkan or VA-API
     # driver. Force Chromium's software path so a missing GPU stack cannot
@@ -2536,10 +2513,8 @@ if __name__ == '__main__':
                     f'--user-data-dir={c.user_folder}')
                 print(f"Use specifed user data folder: {c.user_folder}, please note if you are using docker, this user folder path should be the path inside the docker container.")
                 print(f"使用指定的用户信息目录: {c.user_folder}，请注意如果您正在使用docker，此用户文件夹路径应是容器内的路径。")
-    print(
-        "如果报错Selenium.common.exceptions.WebDriverException: Message: unknown error: Chrome failed to start: exited abnormally，说明有之前运行的Chrome实例没有正常关闭，请关闭之前打开的所有Chrome实例后再运行程序即可。")
-    print(
-        "If you get an error Selenium.common.exceptions.WebDriverException: Message: unknown error: Chrome failed to start: exited abnormally, it means that there is a Chrome instance that was not closed properly before, please close all Chrome instances that were opened before running the program.")
+    print("Chrome 启动失败时，请检查浏览器路径以及所选 Profile 是否被其他进程占用。")
+    print("If Chrome fails to start, check its path and whether the selected profile is in use.")
 
     threads = []
     for i in range(len(c.ids)):
@@ -2578,7 +2553,7 @@ if __name__ == '__main__':
         except:
             cloudflare = 0
         if cloudflare == 0:
-            options.add_argument('log-level=3')  # 隐藏日志
+            options.add_argument('--log-level=3')  # 隐藏日志
             path = os.path.join(os.path.abspath("./"), "Data", "Task_" + str(id), "files")
             print("文件下载路径|File Download path:", path)
             options.add_experimental_option("prefs", {
@@ -2604,48 +2579,13 @@ if __name__ == '__main__':
                 browser = service["browser"]
             except:
                 browser = "chrome"
-            if browser == "chrome":
-                if c.docker_driver == "":
-                    print("Using local driver")
-                    selenium_service = Service(executable_path=driver_path)
-                    browser_t = MyChrome(service=selenium_service, options=options, mode='local_driver')
-                else:
-                    print("Using remote driver")
-                    # Use docker driver, default address is http://localhost:4444/wd/hub
-                    # Headless mode
-                    # options.add_argument("--headless")
-                    # print("Headless mode")
-                    options.binary_location = ""
-                    options.extensions.clear()
-                    browser_t = MyChrome(command_executor=c.docker_driver, options=options, mode='remote_driver')
-            elif browser == "edge":
-                from selenium.webdriver.edge.service import Service as EdgeService
-                from selenium.webdriver.edge.options import Options as EdgeOptions
-                from myChrome import MyEdge
-                selenium_service = EdgeService(executable_path="msedgedriver.exe")
-                options = EdgeOptions()
-                options.use_chromium = True
-                options.add_argument("--ie-mode")
-                options.add_argument("ie.edgepath=msedge.exe")
-                browser_t = MyEdge(service=selenium_service, options=options)
-        elif cloudflare == 1:
-            if sys.platform == "win32":
-                options.binary_location = "C:\\Program Files\\Google\\Chrome Beta\\Application\\chrome.exe"  # 需要用自己的浏览器
-                browser_t = MyUCChrome(
-                    options=options, driver_executable_path=driver_path)
-                links = list(filter(isnotnull, service["links"].split("\n")))
-                # open page in new tab
-                browser_t.execute_script(
-                    'window.open("' + links[0] + '","_blank");')
-                time.sleep(5)  # wait until page has loaded
-                browser_t.switch_to.window(
-                    browser_t.window_handles[1])  # switch to new tab
-                # browser_t = uc.Chrome()
-            else:
-                print("Cloudflare模式只支持Windows x64平台。")
-                print(
-                    "Cloudflare Mode only support on Windows x64 platform.")
-                sys.exit()
+            if browser != "chrome":
+                raise ValueError("Playwright backend currently supports Chrome; Edge IE mode cannot be migrated automatically")
+            if c.docker_driver:
+                raise ValueError("--docker_driver is a Selenium Grid URL; run this Playwright executor inside the container instead")
+            browser_t = MyChrome(options=options)
+        else:
+            raise ValueError("Legacy cloudflare/undetected-chromedriver mode is unavailable with Playwright. Set cloudflare=0 and use Chrome.")
         event = Event()
         event.set()
         thread = BrowserThread(browser_t, id, service,

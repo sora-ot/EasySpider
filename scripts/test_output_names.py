@@ -53,7 +53,8 @@ def load_browser_thread():
                      WriteMode=WriteMode, GraphOption=GraphOption,
                      threading=SimpleNamespace(Event=threading.Event, Thread=Mock),
                      WebDriverWait=lambda *args: None,
-                     driver_path="chromedriver", myMySQL=Mock())
+                     _find_stealth_script=lambda browser: Path("stealth.min.js"),
+                     myMySQL=Mock())
     exec(compile(ast.Module(body=[browser], type_ignores=[]), str(path), "exec"),
          namespace)
     return namespace["BrowserThread"], namespace["myMySQL"]

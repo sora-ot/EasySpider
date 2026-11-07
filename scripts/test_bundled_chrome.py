@@ -1,4 +1,4 @@
-"""Verify the Chrome/ChromeDriver bundled in a Windows EasySpider package."""
+"""Verify the Chrome through Playwright bundled in a Windows EasySpider package."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import argparse
 import json
 from pathlib import Path
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ExecuteStage"))
+from playwright_driver import webdriver, By
 
 
 def main() -> None:
@@ -24,8 +24,7 @@ def main() -> None:
 
     app = args.stage.resolve() / "EasySpider" / "resources" / "app"
     chrome_binary = app / "chrome_win64" / "chrome.exe"
-    chrome_driver = app / "chrome_win64" / "chromedriver_win64.exe"
-    if not chrome_binary.is_file() or not chrome_driver.is_file():
+    if not chrome_binary.is_file():
         raise FileNotFoundError(f"bundled browser files are missing below {app}")
 
     options = webdriver.ChromeOptions()
@@ -36,7 +35,7 @@ def main() -> None:
     options.add_argument("--no-default-browser-check")
     options.add_argument("--ignore-certificate-errors")
 
-    driver = webdriver.Chrome(service=Service(str(chrome_driver)), options=options)
+    driver = webdriver.Chrome(options=options)
     try:
         driver.set_page_load_timeout(30)
         driver.get(args.url)
@@ -49,10 +48,9 @@ def main() -> None:
                     "url": driver.current_url,
                     "title": driver.title,
                     "heading": heading,
-                    "browser_version": driver.capabilities.get("browserVersion"),
-                    "platform": driver.capabilities.get("platformName"),
+                    "browser_version": driver.execute_cdp_cmd("Browser.getVersion", {})["product"],
+                    "platform": sys.platform,
                     "chrome_binary": str(chrome_binary),
-                    "chrome_driver": str(chrome_driver),
                 },
                 ensure_ascii=False,
                 indent=2,

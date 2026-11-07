@@ -16,3 +16,6 @@ old_code/
 Data/
 **/__pycache__/
 **/.venv/
+/ai-rpa-prototype/
+/ExecuteStage/build_playwright/
+/ExecuteStage/build_playwright.log

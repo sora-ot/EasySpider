@@ -284,7 +284,7 @@ function addParameters(t) {
         t["parameters"]["scrollType"] = 0; //滚动类型，0不滚动，1向下滚动1屏，2滚动到底部
         t["parameters"]["scrollCount"] = 1; //滚动次数
         t["parameters"]["scrollWaitTime"] = 1; //滚动后等待时间
-        t["parameters"]["clickWay"] = 0; //点击方式，0代表selenium点击，1代表js点击
+        t["parameters"]["clickWay"] = 0; //点击方式，0代表Playwright点击，1代表js点击
         t["parameters"]["newTab"] = 0; //是否新标签页打开
         t["parameters"]["maxWaitTime"] = 10; //最长等待时间
         t["parameters"]["params"] = []; //默认参数列表

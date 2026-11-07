@@ -11,7 +11,7 @@ if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
 fi
 
 CHROME_DIR="$SCRIPT_DIR/chrome_linux64"
-for required_file in chrome chromedriver_linux64 chrome_crashpad_handler; do
+for required_file in chrome chrome_crashpad_handler; do
     if [[ ! -f "$CHROME_DIR/$required_file" ]]; then
         echo "Missing Linux x64 browser file: $CHROME_DIR/$required_file" >&2
         exit 1
@@ -30,7 +30,7 @@ fi
 # main.js starts this launcher from chrome_linux64. Keep the launcher beside
 # the execution-stage binary so it can resolve that binary relative to itself.
 cp "$SCRIPT_DIR/execute_linux64.sh" "$CHROME_DIR/execute_linux64.sh"
-for executable in chrome chromedriver_linux64 chrome_crashpad_handler \
+for executable in chrome chrome_crashpad_handler \
     chrome-wrapper xdg-mime xdg-settings execute_linux64.sh; do
     if [[ -f "$CHROME_DIR/$executable" ]]; then
         chmod 755 "$CHROME_DIR/$executable"
@@ -70,7 +70,6 @@ cp "$REPO_ROOT/ExecuteStage"/*.py "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/requirements.txt" "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/Readme.md" "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/myCode.py" "$STAGE_DIR/"
-cp -R "$REPO_ROOT/ExecuteStage/undetected_chromedriver_ES" "$STAGE_DIR/Code/"
 cp -R "$REPO_ROOT/ExecuteStage/.vscode" "$STAGE_DIR/Code/"
 
 find "$STAGE_DIR" -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -88,7 +87,7 @@ copy_tracked_tasks
 
 chmod 755 "$STAGE_DIR/easy-spider.sh" "$STAGE_DIR/first_time_run.sh" 2>/dev/null || true
 STAGED_CHROME_DIR="$STAGE_DIR/EasySpider/resources/app/chrome_linux64"
-for executable in chrome chromedriver_linux64 chrome_crashpad_handler \
+for executable in chrome chrome_crashpad_handler \
     chrome_sandbox chrome-sandbox chrome-wrapper xdg-mime xdg-settings \
     easyspider_executestage execute_linux64.sh; do
     if [[ -f "$STAGED_CHROME_DIR/$executable" ]]; then

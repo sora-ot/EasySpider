@@ -55,7 +55,6 @@ cp "$REPO_ROOT/ExecuteStage"/*.py "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/requirements.txt" "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/Readme.md" "$STAGE_DIR/Code/"
 cp "$REPO_ROOT/ExecuteStage/myCode.py" "$STAGE_DIR/"
-cp -R "$REPO_ROOT/ExecuteStage/undetected_chromedriver_ES" "$STAGE_DIR/Code/"
 cp -R "$REPO_ROOT/ExecuteStage/.vscode" "$STAGE_DIR/Code/"
 
 while IFS= read -r -d '' task; do

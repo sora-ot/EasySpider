@@ -8,16 +8,7 @@ const {
     session,
 } = require("electron");
 app.commandLine.appendSwitch("--disable-http-cache");
-const {
-    Builder,
-    By,
-    Key,
-    until,
-    Select,
-    StaleElementReferenceException,
-} = require("selenium-webdriver");
-const chrome = require("selenium-webdriver/chrome");
-const {ServiceBuilder} = require("selenium-webdriver/chrome");
+const {launchBrowser, By, Key, until, Select} = require("./playwright_browser");
 const {rootCertificates} = require("tls");
 const {exit} = require("process");
 const path = require("path");
@@ -114,7 +105,6 @@ if(config.webserver_address.includes("localhost") || config.webserver_address.in
 let server_address = `${config.webserver_address}:${config.webserver_port}`;
 const websocket_port = 8084; //目前只支持8084端口，写死，因为扩展里面写死了
 console.log("server_address: " + server_address);
-let driverPath = "";
 let chromeBinaryPath = "";
 let execute_path = "";
 console.log(process.arch);
@@ -142,15 +132,12 @@ console.log(process.arch);
 // });
 
 if (process.platform === "win32" && process.arch === "ia32") {
-    driverPath = path.join(__dirname, "chrome_win32/chromedriver_win32.exe");
     chromeBinaryPath = path.join(__dirname, "chrome_win32/chrome.exe");
     execute_path = path.join(__dirname, "chrome_win32/execute_win32.bat");
 } else if (process.platform === "win32" && process.arch === "x64") {
-    driverPath = path.join(__dirname, "chrome_win64/chromedriver_win64.exe");
     chromeBinaryPath = path.join(__dirname, "chrome_win64/chrome.exe");
     execute_path = path.join(__dirname, "chrome_win64/execute_win64.bat");
 } else if (process.platform === "darwin") {
-    driverPath = path.join(__dirname, "chromedriver_mac64");
     chromeBinaryPath = path.join(
         __dirname,
         "chrome_mac64.app/Contents/MacOS/Google Chrome"
@@ -161,11 +148,10 @@ if (process.platform === "win32" && process.arch === "ia32") {
     // The packaged macOS build copies this binary into Resources/app.
     execute_path = path.join(__dirname, "easyspider_executestage");
 } else if (process.platform === "linux") {
-    driverPath = path.join(__dirname, "chrome_linux64/chromedriver_linux64");
     chromeBinaryPath = path.join(__dirname, "chrome_linux64/chrome");
     execute_path = path.join(__dirname, "chrome_linux64/execute_linux64.sh");
 }
-console.log(driverPath, chromeBinaryPath, execute_path);
+console.log(chromeBinaryPath, execute_path);
 let language = "en";
 let driver = null;
 let mainWindow = null;
@@ -1398,7 +1384,7 @@ function notify_browser(msg_zh, msg_en, level = "info") {
 }
 
 function send_message_to_browser(message) {
-    socket_window.send(message);
+    if (socket_window && socket_window.readyState === 1) socket_window.send(message);
     for (let i in allWindowSockets) {
         try {
             allWindowSockets[i].send(message);
@@ -1410,7 +1396,7 @@ function send_message_to_browser(message) {
 
 const WebSocket = require("ws");
 const {all} = require("express/lib/application");
-const {copy} = require("selenium-webdriver/io");
+const copy = async (source, destination) => fs.promises.cp(source, destination, {recursive: true});
 // 8084 端口只服务本机页面与浏览器扩展，绑定到回环地址，避免同网段设备直连。
 // 见 issue #986：未限制监听地址时，任意局域网设备都能连上并窃取浏览器 Cookie。
 let wss = new WebSocket.Server({host: "127.0.0.1", port: websocket_port});
@@ -1544,156 +1530,50 @@ wss.on("error", function (err) {
 console.log(process.platform);
 
 async function runBrowser(lang = "en", user_data_folder = "", mobile = false) {
-    const serviceBuilder = new ServiceBuilder(driverPath);
-    let options = new chrome.Options();
-    options.addArguments("--disable-blink-features=AutomationControlled");
-    options.addArguments("--disable-infobars");
-    options.addArguments("--disable-web-security");
-    options.addArguments("--disable-features=CrossSiteDocumentBlockingIfIsolating,CrossSiteDocumentBlockingAlways,IsolateOrigins,site-per-process");
-
-    options.set("webSocketUrl", true);
-    // 添加以下两个参数来启用 WebExtension 安装
-    options.addArguments('--enable-unsafe-extension-debugging');
-    options.addArguments('--remote-debugging-pipe');
-
-    // 添加实验性选项以排除'enable-automation'开关
-    options.set("excludeSwitches", ["enable-automation"]);
-    options.excludeSwitches("enable-automation");
-
-
-    // 添加实验性选项来禁用自动化扩展
-    options.set("useAutomationExtension", false);
-    // options.addArguments('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36');
-    options.set;
     language = lang;
-    // if (lang == "en") {
-    //     options.addExtensions(path.join(__dirname, "EasySpider_en.crx"));
-    // } else if (lang == "zh") {
-    //     options.addExtensions(path.join(__dirname, "EasySpider_zh.crx"));
-    // }
-    // 使用 BiDi WebExtension API
-    const getWebExtensionInstance = require('./selenium-webdriver-bidi-webExtension/webExtension');
-    const ExtensionData = require('./selenium-webdriver-bidi-webExtension/extensionData');
-
-
-    options.setChromeBinaryPath(chromeBinaryPath);
-
+    const profileExtensions = [
+        path.join(__dirname, lang == "zh" ? "EasySpider_zh" : "EasySpider_en"),
+        path.join(__dirname, "XPathHelper_MV3"),
+    ];
+    const userAgent = mobile
+        ? "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
+        : "";
+    let dir = "";
     if (user_data_folder != "") {
-        let dir = path.join(task_server.getDir(), user_data_folder);
+        dir = path.join(task_server.getDir(), user_data_folder);
         console.log(dir);
-        options.addArguments("--user-data-dir=" + dir);
         config.user_data_folder = user_data_folder;
         config_context.user_data_folder = user_data_folder;
-        fs.writeFileSync(
-            path.join(task_server.getDir(), "config.json"),
-            JSON.stringify(config)
-        );
+        fs.writeFileSync(path.join(task_server.getDir(), "config.json"), JSON.stringify(config));
     } else {
         config_context.user_data_folder = "";
     }
-    if (mobile) {
-        const mobileEmulation = {
-            deviceName: "iPhone XR",
-        };
-        options.addArguments(
-            `--user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 13_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"`
-        );
-        options.setMobileEmulation(mobileEmulation);
-    }
-    driver = new Builder()
-        .forBrowser("chrome")
-        .setChromeOptions(options)
-        .setChromeService(serviceBuilder)
-        .build();
-    await driver
-        .manage()
-        .setTimeouts({implicit: 3, pageLoad: 10000, script: 10000});
-    
-    // 创建 WebExtension 实例
-    const webExtension = await getWebExtensionInstance(driver);
-
-    try {
-        // 安装 EasySpider 主扩展 - 使用解压后的文件夹
-        let easySpiderPath;
-        if (lang == "zh") {
-            easySpiderPath = path.join(__dirname, "EasySpider_zh");
-        } else {
-            easySpiderPath = path.join(__dirname, "EasySpider_en");
-        }
-        const easySpiderId = await webExtension.install(
-            ExtensionData.setPath(easySpiderPath)
-        );
-        console.log(`EasySpider 扩展已安装，ID: ${easySpiderId}`);
-
-        // Chrome 151 不再接受旧的 Manifest V2 XPathHelper.crx；
-        // 使用 BiDi 安装解压后的 Manifest V3 兼容版本。
-        const xpathHelperPath = path.join(__dirname, "XPathHelper_MV3");
-        const xpathHelperId = await webExtension.install(
-            ExtensionData.setPath(xpathHelperPath)
-        );
-        console.log(`XPath Helper MV3 已安装，ID: ${xpathHelperId}`);
-    } catch (error) {
-        console.error('安装扩展失败:', error);
-        throw error;
-    }
-    
-    await driver.executeScript(
-        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    );
-    // await driver.executeScript("localStorage.clear();"); //重置参数数量
-    
-
-    // 注入 stealth 脚本（使用 Script 类）
-    const Script = require('selenium-webdriver/lib/script.js');
-    let script_path = path.join(__dirname, "stealth.min.js");
-    let stealth_script = fs.readFileSync(script_path, "utf8");
-    
-    const script = new Script(driver);  // ← 实例化 Script 类
-    const scriptId = await script.pin(stealth_script);
-    console.log(`stealth.min.js 已注入，ID: ${scriptId}`);
-
-
-
+    const scriptPath = path.join(__dirname, "stealth.min.js");
+    const initScript = fs.readFileSync(scriptPath, "utf8") +
+        "\nObject.defineProperty(navigator, 'webdriver', {get: () => undefined});";
+    driver = await launchBrowser({
+        executablePath: chromeBinaryPath, profile: dir, mobile, userAgent,
+        extensions: profileExtensions, initScript, headless: false,
+    });
+    await driver.manage().setTimeouts({implicit: 3000, pageLoad: 10000, script: 10000});
     if (config_context.user_data_folder == "") {
-        //调整浏览器窗口大小
-        let size = await driver.manage().window().getRect();
-        let width = size.width;
-        let height = size.height;
-        await driver
-            .manage()
-            .window()
-            .setRect({width: width * 1.2, height: height});
+        const size = await driver.manage().window().getRect();
+        await driver.manage().window().setRect({width: size.width * 1.2, height: size.height});
     }
     try {
-        if (mobile) {
-            await driver.get(
-                server_address +
-                "/taskGrid/taskList.html?wsport=" +
-                websocket_port +
-                "&backEndAddressServiceWrapper=" +
-                server_address +
-                "&mobile=1&lang=" +
-                lang
-            );
-        } else {
-            await driver.get(
-                server_address +
-                "/taskGrid/taskList.html?wsport=" +
-                websocket_port +
-                "&backEndAddressServiceWrapper=" +
-                server_address +
-                "&lang=" +
-                lang
-            );
-        }
+        const mobileQuery = mobile ? "&mobile=1" : "";
+        await driver.get(server_address + "/taskGrid/taskList.html?wsport=" + websocket_port +
+            "&backEndAddressServiceWrapper=" + server_address + mobileQuery + "&lang=" + lang);
         old_handles = await driver.getAllWindowHandles();
         current_handle = old_handles[old_handles.length - 1];
-    } finally {
-        // await driver.quit(); // 退出浏览器
+    } catch (error) {
+        await driver.quit();
+        driver = null;
+        throw error;
     }
 }
 
-function handleOpenBrowser(
+async function handleOpenBrowser(
     event,
     lang = "en",
     user_data_folder = "",
@@ -1701,7 +1581,12 @@ function handleOpenBrowser(
 ) {
     const webContents = event.sender;
     const win = BrowserWindow.fromWebContents(webContents);
-    runBrowser(lang, user_data_folder, mobile);
+    try {
+        await runBrowser(lang, user_data_folder, mobile);
+    } catch (error) {
+        dialog.showErrorBox("Chrome 启动失败 / Chrome startup failed", String(error));
+        return;
+    }
     let size = screen.getPrimaryDisplay().workAreaSize;
     let width = parseInt(size.width);
     let height = parseInt(size.height * 0.5);
@@ -1738,7 +1623,10 @@ function handleOpenBrowser(
     }
     flowchart_window.on("close", function (event) {
         mainWindow.show();
-        driver.quit();
+        if (driver) {
+            driver.quit().catch(error => console.error("Failed to close Playwright browser:", error));
+            driver = null;
+        }
     });
 }
 
@@ -1805,59 +1693,12 @@ app.whenReady().then(() => {
         }
     });
     if (process.platform === "darwin") {
-        // 获取Chrome版本
-        execFile(chromeBinaryPath, ["--version"], (error, chromeStdout) => {
-            if (error) {
-                dialog.showErrorBox("Chrome Error", "Failed to retrieve Chrome version.");
-                return;
-            }
-
-            // Chrome的版本输出通常是 "Google Chrome xx.x.xxx.x"
-            const chromeVersionMatch = chromeStdout.match(/\d+/);
-            if (!chromeVersionMatch) {
-                dialog.showErrorBox("Chrome Error", "Unable to parse Chrome version.");
-                return;
-            } else {
-                console.log("\n\n\nChrome version: ", chromeVersionMatch[0]);
-            }
-            const chromeVersion = chromeVersionMatch[0];
-
-            // 获取ChromeDriver版本
-            execFile(driverPath, ["--version"], (error, chromedriverStdout) => {
-                if (error) {
-                    dialog.showErrorBox(
-                        "ChromeDriver Error",
-                        "Failed to retrieve ChromeDriver version."
-                    );
-                    return;
-                } else {
-                    console.log("\n\n\nChromeDriver version: ", chromedriverStdout);
-                }
-
-                // ChromeDriver的版本输出通常是 "ChromeDriver xx.x.xxx.x (更多信息)"
-                const chromedriverVersionMatch =
-                    chromedriverStdout.match(/\d+\.\d+\.\d+\.\d+/);
-                if (!chromedriverVersionMatch) {
-                    dialog.showErrorBox(
-                        "ChromeDriver Error",
-                        "Unable to parse ChromeDriver version."
-                    );
-                    return;
-                }
-                const chromedriverVersion = chromedriverVersionMatch[0];
-
-                // 检查主版本号是否匹配
-                if (chromeVersion.split(".")[0] !== chromedriverVersion.split(".")[0]) {
-                    dialog.showErrorBox(
-                        "ChromeDriver版本不匹配\nChromeDriver Version Mismatch",
-                        `由于MacOS的自动升级策略，导致了当前的Chrome的版本被自动更新到了${chromeVersion}，与软件自带的ChromeDriver的版本（${chromedriverVersion}）不匹配，软件将无法正常使用。请阅读文件夹下的“浏览器闪退解决方案.txt”升级ChromeDriver到${chromeVersion}.*版本以正常使用软件。\n\nThe current version of Chrome has been automatically updated to ${chromeVersion} due to the automatic update policy of MacOS, which does not match the version of ChromeDriver (${chromedriverVersion}) provided by the software. The software will not work properly. Please read the "Browser Crash Solution.txt" in the folder to upgrade ChromeDriver to ${chromeVersion}.* version to use the software normally.`
-                    );
-                } else {
-                    // 版本匹配，继续应用流程
-                }
-            });
+        execFile(chromeBinaryPath, ["--version"], (error, stdout) => {
+            if (error) dialog.showErrorBox("Chrome Error", "Failed to retrieve bundled Chrome version.");
+            else console.log("Bundled Chrome version:", stdout.trim());
         });
     }
+
 
 });
 

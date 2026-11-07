@@ -86,16 +86,18 @@ def main() -> None:
     assert totals == {"a": 3, "b": 3}
     results["pandas"] = {"pandas": package_version("pandas"), "totals": totals}
 
-    # Selenium: construct real Chrome options and an XPath locator without starting Chrome.
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
+    # Construct the Playwright facade without starting Chrome.
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ExecuteStage"))
+    from playwright_driver import webdriver, By
 
     options = webdriver.ChromeOptions()
     options.add_argument("--headless=new")
     locator = (By.XPATH, "//h1")
     assert "--headless=new" in options.arguments and locator == ("xpath", "//h1")
-    results["selenium"] = {
-        "selenium": package_version("selenium"),
+    results["playwright"] = {
+        "playwright": package_version("playwright"),
         "arguments": options.arguments,
         "locator": list(locator),
     }

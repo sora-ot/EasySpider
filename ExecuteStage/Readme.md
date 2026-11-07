@@ -24,20 +24,20 @@ This section covers the compilation instructions for the `Execution stage progra
 
 ## 建议编译顺序 | Suggested Compilation Order
 
-1. 编译浏览器扩展，否则在主程序执行时会提示找不到`EasySpider_zh.crx`的错误。
+1. 准备解包后的 `EasySpider_zh`、`EasySpider_en` 和 `XPathHelper_MV3` 扩展目录，供 Playwright 设计器加载。
 2. 编译主程序，此时主程序可以正常运行，但无法执行任务，只能设计任务。
 3. 编译执行阶段程序，否则无法执行任务，只能设计任务。
 
 -----
 
-1. Compile the browser extension, otherwise an error will be prompted when the main program is executed that `EasySpider_en.crx` cannot be found.
+1. Prepare the unpacked `EasySpider_zh`, `EasySpider_en` and `XPathHelper_MV3` extension directories for the Playwright designer.
 2. Compile the main program, at this time the main program can run normally, but can not execute the task, can only design the task.
 3. Compile the execution stage program, otherwise the task cannot be executed, can only design the task.
 
 
 ## 环境构建 | Environment Setup
 
-1. 安装Python 3.7及以上版本并添加至系统环境变量：[https://www.python.org/downloads/](https://www.python.org/downloads/)。
+1. 使用 Python 3.11 x64（本分支的验证环境），并添加至系统环境变量：[https://www.python.org/downloads/](https://www.python.org/downloads/)。当前固定版本的依赖不再支持原先的 Python 3.7/32 位环境。
 2. 安装`pip3`并添加至系统环境变量（Windows安装python后会自带pip，Linux和MacOS安装方式请自行搜索）。
 3. 安装执行阶段需要的依赖库：
    
@@ -47,7 +47,7 @@ This section covers the compilation instructions for the `Execution stage progra
 
 -----
 
-1. Install Python 3.7 or higher version and add it to the system environment variables: [https://www.python.org/downloads/](https://www.python.org/downloads/).
+1. Use Python 3.11 x64 (the tested environment for this branch) and add it to the system environment variables: [https://www.python.org/downloads/](https://www.python.org/downloads/). The pinned dependencies no longer support the old Python 3.7/32-bit environment.
 2. Install pip3 and add it to the system environment variables. (On Windows, pip is automatically installed with Python. For Linux and macOS, please refer to the appropriate installation instructions).
 3. Install the required dependencies for the execution stage by running:
    
@@ -57,7 +57,7 @@ This section covers the compilation instructions for the `Execution stage progra
 
 ## 运行说明 | Run Instruction
 
-运行程序前，确保已经完成了`ElectronJS`文件夹下`主程序`的编译，保证`chrome`文件夹和`chromedriver`环境已经就绪，同时**EasySpider主程序已在运行中**。
+运行程序前，确保已经完成了`ElectronJS`文件夹下`主程序`的编译，保证项目自带的 Chrome 浏览器已就绪，同时**EasySpider主程序已在运行中**。
 
 在当前文件夹下直接运行程序：
 
@@ -69,7 +69,7 @@ python3 easyspider_executestage.py --ids [1]
 
 -----
 
-Before running the program, make sure you have completed the compilation of the `main program` in the `ElectronJS` folder and ensure that the `chrome` folder and `chromedriver` environment are ready. Also, ensure that the **EasySpider main program is already running**.
+Before running the program, make sure you have compiled the main program in `ElectronJS` and that the bundled Chrome browser is available. Also, ensure that the **EasySpider main program is already running**.
 
 To run the program directly in the current folder, use the following command:
 

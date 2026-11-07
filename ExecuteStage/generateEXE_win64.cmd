@@ -16,7 +16,7 @@ if not exist "%DDDDOCR_MODEL%" (
     exit /b 1
 )
 
-pyinstaller -F --icon=favicon.ico --hidden-import selenium.webdriver.ie.webdriver --add-data "%ONNX_DLL%;onnxruntime\capi" --add-data "%DDDDOCR_MODEL%;ddddocr" easyspider_executestage.py
+pyinstaller -F --icon=favicon.ico --hidden-import playwright.async_api --hidden-import _playwright_runtime --collect-data playwright --add-data "%ONNX_DLL%;onnxruntime\capi" --add-data "%DDDDOCR_MODEL%;ddddocr" easyspider_executestage.py
 if errorlevel 1 exit /b %errorlevel%
 if not exist dist\easyspider_executestage.exe exit /b 1
 

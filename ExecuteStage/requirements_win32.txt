@@ -1,6 +1,8 @@
+# Historical dependency list. Playwright 1.64.1 is not a supported Windows
+# 32-bit Python target; use Python 3.11 x64 and requirements.txt for this branch.
 commandline_config==2.2.3
+playwright==1.64.1
 requests==2.32.0
-selenium==4.16.0
 pyinstaller==5.13.2
 Pillow==9.5.0
 xlsxwriter==3.1.9
@@ -10,4 +12,3 @@ lxml==4.9.2
 ddddocr==1.4.10
 pynput==1.7.6
 beautifulsoup4==4.12.2
-undetected-chromedriver==3.4.7

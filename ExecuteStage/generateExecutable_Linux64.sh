@@ -36,7 +36,7 @@ rm -rf build dist
     --noconfirm \
     --clean \
     --onefile \
-    --hidden-import selenium.webdriver.ie.webdriver \
+    --hidden-import playwright.async_api --hidden-import _playwright_runtime --collect-data playwright \
     --add-binary "$ONNX_STATE:onnxruntime/capi" \
     --add-data "$DDDDOCR_MODEL:ddddocr" \
     easyspider_executestage.py

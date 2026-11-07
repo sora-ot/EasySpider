@@ -35,7 +35,7 @@ rm -rf build dist
     --onefile \
     --target-arch "$HOST_ARCH" \
     --icon favicon.ico \
-    --hidden-import selenium.webdriver.ie.webdriver \
+    --hidden-import playwright.async_api --hidden-import _playwright_runtime --collect-data playwright \
     --exclude-module ddddocr \
     --exclude-module onnxruntime \
     --exclude-module onnx \
@@ -65,7 +65,7 @@ rm -rf build dist
     --onefile \
     --target-arch "$HOST_ARCH" \
     --icon favicon.ico \
-    --hidden-import selenium.webdriver.ie.webdriver \
+    --hidden-import playwright.async_api --hidden-import _playwright_runtime --collect-data playwright \
     --add-binary "$ONNX_STATE:onnxruntime/capi" \
     --add-data "$DDDDOCR_MODEL:ddddocr" \
     easyspider_executestage.py

@@ -1,7 +1,7 @@
 """
 这是一个示例代码文件，可以直接在这里写Python代码，然后在程序中的exec操作中调用。如果此文件名称为myCode.py，请将此文件放置在EasySpider程序目录下（和Data/文件夹同级），那么在程序中的exec操作中可以直接写outside:myCode.py来调用此文件中的代码，示例：
 
-1. 用self.browser表示当前操作的浏览器，可直接用selenium的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)即可滚动到页面最下方。
+1. 用self.browser表示当前操作的浏览器，可使用EasySpider浏览器兼容API（底层为Playwright），如self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)即可滚动到页面最下方。
 2. 自定义一个全局变量：self.myVar = 1
 3. 操纵上面定义的全局变量：self.myVar = self.myVar + 1
 4. 打印上面定义的全局变量：print(self.myVar)
@@ -12,7 +12,7 @@
 
 This is a sample code snippet file. You can directly write Python code here, and then call it in the program using an `exec` operation. If this file is named myCode.py, please place this file under the EasySpider program directory (at the same level as the Data/ folder). Then, in the program's `exec` operation, you can directly write outside:myCode.py to invoke the code from this file. Examples:
 
-1. Use self.browser to refer to the current browser being operated on. You can directly utilize the selenium API to perform actions. For instance, self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END) will scroll to the bottom of the page.
+1. Use self.browser to refer to the current browser being operated on. You can directly utilize the EasySpider browser API to perform actions. For instance, self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END) will scroll to the bottom of the page.
 2. Define a global variable: self.myVar = 1
 3. Manipulate the above-defined global variable: self.myVar = self.myVar + 1
 4. Print the above-defined global variable: print(self.myVar)
@@ -25,7 +25,7 @@ For more complex operations, please download the source code and compile it for 
 # 请在下面编写你的代码，不要有代码缩进！！！ | Please write your code below, do not indent the code!!!
 print(globals())
 # 导包 | Import packages
-from selenium.common.exceptions import ElementClickInterceptedException
+from playwright_driver import ElementClickInterceptedException
 
 # 定义一个函数 | Define a function
 def test(n = 0):

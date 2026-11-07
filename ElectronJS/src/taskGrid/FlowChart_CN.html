@@ -172,7 +172,7 @@
                     <input spellcheck=false onkeydown="inputDelete(event)" class="form-control" v-model.number="nowNode['parameters']['maxWaitTime']" type="number" required></input>
                     <label>点击类型（如是否双击）：</label>
                     <select v-model='nowNode["parameters"]["clickWay"]' class="form-control">
-                        <option :value = 0>Selenium点击</option>
+                        <option :value = 0>Playwright点击</option>
                         <option :value = 1>JavaScript点击</option>
                         <option :value = 2>双击</option>
                     </select>
@@ -412,7 +412,7 @@
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='nowNode["parameters"]["codeMode"] == 5'>请先阅读此说明，再在上方输入框（不是本框）写具体代码，如果要执行大量代码，可以直接写outside:myCode.py，这样程序就会读取并执行EasySpider目录下的myCode.py中的代码。
 注意包含exec和eval操作的语句和XPath不能在当前页面试运行，只能在任务真正调用时运行。
 此选项为高级功能，可以直接用Python代码操纵正在运行中的浏览器，及可以自定义整个执行环境中的变量，并对变量进行修改赋值等操作，示例：
-1. 用self.browser表示当前操作的浏览器，可直接用selenium的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)即可滚动到页面最下方。
+1. 用self.browser表示当前操作的浏览器，可直接用Playwright的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").send_keys(Keys.END)即可滚动到页面最下方。
 2. 自定义一个全局变量：self.myVar = 1
 3. 操纵上面定义的全局变量：self.myVar = self.myVar + 1
 4. 打印上面定义的全局变量：print(self.myVar)
@@ -430,7 +430,7 @@ print(emotlib.emoji()) # 使用其中的函数。
 </pre>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='nowNode["parameters"]["codeMode"] == 6'>请先阅读此说明，再在上方输入框（不是本框）写具体代码，如果要执行大量代码，可以直接写outside:myCode.py，这样程序就会读取并执行EasySpider目录下的myCode.py中的代码。
 此选项为高级功能，可以直接返回Python代码的表达式值，并在其他位置用Field["本操作名称"]表示此操作返回值，示例：
-1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用selenium的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text即可返回当前页面的文字。
+1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用Playwright的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text即可返回当前页面的文字。
 2. 返回自定义全局变量的值：self.myVar
 3. 返回条件判断的值：self.myVar == 1
 4. 判断某个字段提取的值是否等于某个变量的值：self.outputParameters["字段名"] == self.myVar
@@ -578,7 +578,7 @@ print(emotlib.emoji()) # 使用其中的函数。
                         <textarea spellcheck=false onkeydown="inputDelete(event)" class="form-control" rows="3" v-model='nowNode["parameters"]["code"]' placeholder="命令返回值大于0或为真则继续循环，否则停止循环。如：return document.body.scrollWidth > 1000 或 python D:/test.py，分别为JS命令和系统命令返回值示例。"></textarea>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 220px; font-size: 15px!important; word-wrap: break-word; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='parseInt(loopType) == 7'>请先阅读此说明，再在上方输入框（不是本框）写具体代码，如果要执行大量代码，可以直接写outside:myCode.py，这样程序就会读取并执行EasySpider目录下的myCode.py中的代码。
 根据Python代码的表达式值来决定是否循环，示例：
-1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用selenium的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"，表示判断当前页面是否为123这个文本。
+1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用Playwright的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"，表示判断当前页面是否为123这个文本。
 2. 返回自定义全局变量的值：self.myVar
 3. 返回条件判断的值：self.myVar > 1
 4. 判断某个字段提取的值是否等于某个变量的值：self.outputParameters["字段名"] == self.myVar
@@ -662,7 +662,7 @@ print(emotlib.emoji()) # 使用其中的函数。
                         <textarea spellcheck=false onkeydown="inputDelete(event)" class="form-control" rows="3" v-model='nowNode["parameters"]["code"]' placeholder="命令返回值大于0或为真则执行此分支内操作，否则不执行。如：return document.body.scrollWidth > 1000 或 python D:/test.py，分别为JS命令和系统命令返回值示例。"></textarea>
                         <pre class="form-control" style="background: white; margin-top: 20px; min-height: 200px; font-size: 15px!important; word-wrap: break-word!important; white-space: pre-wrap; border-radius: 0; border: 1px solid" disabled v-if='TClass == 8'>请先阅读此说明，再在上方输入框（不是本框）写具体代码，如果要执行大量代码，可以直接写outside:myCode.py，这样程序就会读取并执行EasySpider目录下的myCode.py中的代码。
 根据Python代码的表达式值来判断条件是否满足，示例：
-1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用selenium的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"，表示判断当前页面是否为123这个文本。
+1. 返回当前浏览器对象的相关值，用self.browser表示当前操作的浏览器，可直接用Playwright的API进行操作，如self.browser.find_element(By.CSS_SELECTOR, "body").text=="123"，表示判断当前页面是否为123这个文本。
 2. 返回自定义全局变量的值：self.myVar，如果
 3. 返回条件判断的值：self.myVar == 1
 4. 判断某个字段提取的值是否等于某个变量的值：self.outputParameters["字段名"] == self.myVar
